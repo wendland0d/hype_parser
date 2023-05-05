@@ -161,3 +161,5 @@ cython_debug/
 
 # FROM USER
 docker-compose.yaml
+.vscode
+run.py

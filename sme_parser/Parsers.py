@@ -8,12 +8,14 @@ from typing import List, Dict, Optional
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from json.decoder import JSONDecodeError
+from datetime import datetime
 
 class Buff(BaseParser):
     HOME_PAGE = ''
     MARKET_PAGE = ''
     MARKET_API_PAGE = ''
-
+    ITEM_PAGE = 'https://buff.163.com/api/market/goods/bill_order?game=csgo&goods_id='
+    ITEM_HISTORY_PAGE = 'https://buff.163.com/api/market/goods/price_history/buff?game=csgo&goods_id='
 
     def __init__(self, login: str, password: str, secret: str, proxies: List[str]) -> None:
         super().__init__(login, password, secret)
@@ -51,7 +53,7 @@ class Buff(BaseParser):
         'host': 'buff.163.com',
         'referer': 'https://buff.163.com/'
         }
-        count = requests.get('https://buff.163.com/api/market/goods?game=csgo&page_num=1&use_suggestion=0&_=1680098328746',
+        count = requests.get(f'https://buff.163.com/api/market/goods?game=csgo&page_num=1&use_suggestion=0&_={datetime.timestamp()}',
                          headers=mp_headers).json()['data']['total_page']
         return count
 
@@ -64,7 +66,7 @@ class Buff(BaseParser):
             }
         
         response = self.session.get(
-        url=f'https://buff.163.com/api/market/goods?game=csgo&page_num={page}&use_suggestion=0&_=1680170306951',
+        url=f'https://buff.163.com/api/market/goods?game=csgo&page_num={page}&use_suggestion=0&_={datetime.timestamp()}',
         headers=request_header)
         
         try:
@@ -99,3 +101,45 @@ class Buff(BaseParser):
                 data.update({f'{item["market_hash_name"]}': item})
             time.sleep(sleep_timer)
         return data
+    
+    def parse_point(self, item_id):
+        request_header = {
+            'user-agent': f'{self.user_agent}',
+            'accept': '*/*',
+            'host': 'buff.163.com',
+            'referer': 'https://buff.163.com/'
+            }
+        url = self.ITEM_PAGE + f'{item_id}&_={datetime.timestamp}' 
+        try:
+            raw_points = self.session.get(url=url, headers=request_header).json()
+        except:
+            print(self.session.get(url=url, headers=request_header).content)
+        
+        points = [{
+                "UniqueID" : raw_points["data"]["items"][0]["goods_id"],
+                "Points": [{'Price': float(date["price"]), 'Time': f'{datetime.fromtimestamp(date["buyer_pay_time"])}', "TimeStamp": date["buyer_pay_time"]} for date in raw_points['data']['items']],
+                "BuyOffers": [0],
+                "SellOffers": [0]
+            }]
+        
+        return points
+    
+    def parse_history(self, item_id):
+        request_header = {
+            'user-agent': f'{self.user_agent}',
+            'accept': '*/*',
+            'host': 'buff.163.com',
+            'referer': 'https://buff.163.com/'
+            }
+        url = self.ITEM_HISTORY_PAGE + f'{item_id}' f'&currency=USD&days=30&buff_price_type=2&_={datetime.timestamp}'
+        raw_data = self.session.get(url=url, headers=request_header).json()
+
+        points=[{
+            "UniqueID" : f'{item_id}',
+            "Points": [{"Price": i[1], "Timestamp": f'{int(i[0]/1000)}'} for i in raw_data["data"]["price_history"]],
+            "BuyOffers": [132],
+            "SellOffers": [1000]
+        }]
+        return points
+    
+

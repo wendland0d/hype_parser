@@ -33,6 +33,27 @@ class BaseParser():
 
         return code
     
+    @staticmethod
+    def steam_twofa_key(secret_string) -> str:
+        if '\n' in secret_string:
+            secret = secret_string.replace('\n', '')
+        code = ''
+        char = '23456789BCDFGHJKMNPQRTVWXY'
+        secret = secret_string
+
+        hex_time = ('%016x' % (int(time.time()) // 30))
+        byte_time = bytes.fromhex(hex_time)
+
+        digest = hmac.new(base64.b32decode(secret), byte_time, hashlib.sha1).digest()
+        begin = ord(digest[19:20]) & 0xF
+        c_int = int.from_bytes((digest[begin:begin + 4]), "big") & 0x7fffffff
+
+        for r in range(5):
+            code += char[int(c_int) % len(char)]
+            c_int /= len(char)
+
+        return code
+    
     def steam_login(self) -> requests.Session:
         user = wa.WebAuth(self.login)
         try:
