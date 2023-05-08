@@ -163,3 +163,4 @@ cython_debug/
 docker-compose.yaml
 .vscode
 run.py
+data

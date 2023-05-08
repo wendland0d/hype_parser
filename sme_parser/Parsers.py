@@ -1,5 +1,6 @@
 from .BaseParser import BaseParser
 
+import asyncio
 import requests
 import time
 from bs4 import BeautifulSoup
@@ -53,7 +54,8 @@ class Buff(BaseParser):
         'host': 'buff.163.com',
         'referer': 'https://buff.163.com/'
         }
-        count = requests.get(f'https://buff.163.com/api/market/goods?game=csgo&page_num=1&use_suggestion=0&_={datetime.timestamp()}',
+        dt = datetime.now()
+        count = requests.get(f'https://buff.163.com/api/market/goods?game=csgo&page_num=1&use_suggestion=0&_={datetime.timestamp(dt)}',
                          headers=mp_headers).json()['data']['total_page']
         return count
 
@@ -64,9 +66,9 @@ class Buff(BaseParser):
             'host': 'buff.163.com',
             'referer': 'https://buff.163.com/'
             }
-        
+        dt = datetime.now()
         response = self.session.get(
-        url=f'https://buff.163.com/api/market/goods?game=csgo&page_num={page}&use_suggestion=0&_={datetime.timestamp()}',
+        url=f'https://buff.163.com/api/market/goods?game=csgo&page_num={page}&use_suggestion=0&_={datetime.timestamp(dt)}',
         headers=request_header)
         
         try:
@@ -98,7 +100,10 @@ class Buff(BaseParser):
         for page in range(start_page, end_page):
             response = self.request(page=page)
             for item in response["data"]["items"]:
-                data.update({f'{item["market_hash_name"]}': item})
+                if float(item["sell_min_price"]) < 1:
+                    continue
+                else:
+                    data.update({f'{item["market_hash_name"]}': [item]})
             time.sleep(sleep_timer)
         return data
     
@@ -131,14 +136,15 @@ class Buff(BaseParser):
             'host': 'buff.163.com',
             'referer': 'https://buff.163.com/'
             }
-        url = self.ITEM_HISTORY_PAGE + f'{item_id}' f'&currency=USD&days=30&buff_price_type=2&_={datetime.timestamp}'
+        dt = datetime.now()
+        url = self.ITEM_HISTORY_PAGE + f'{item_id}' f'&currency=USD&days=30&buff_price_type=2&_={datetime.timestamp(dt)}'
         raw_data = self.session.get(url=url, headers=request_header).json()
 
         points=[{
             "UniqueID" : f'{item_id}',
             "Points": [{"Price": i[1], "Timestamp": f'{int(i[0]/1000)}'} for i in raw_data["data"]["price_history"]],
-            "BuyOffers": [132],
-            "SellOffers": [1000]
+            "BuyOffers": [0],
+            "SellOffers": [0]
         }]
         return points
     

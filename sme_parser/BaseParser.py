@@ -34,7 +34,7 @@ class BaseParser():
         return code
     
     @staticmethod
-    def steam_twofa_key(secret_string) -> str:
+    def steam_twofa_key(secret_string: str) -> str:
         if '\n' in secret_string:
             secret = secret_string.replace('\n', '')
         code = ''
